@@ -1,0 +1,31 @@
+﻿version: 1
+
+projects:
+  - name: ecommerce-accountant-software
+    repo: GOkasha/ecommerce-accountant-software
+    docs: projects/ecommerce-accountant-software
+    status: handover
+    tier: P0
+    roles:
+      - head-of-product
+      - tech-lead
+      - backend-engineer
+      - frontend-engineer
+      - qa-engineer
+      - security-auditor
+      - data-analyst
+    tags:
+      - ecommerce
+      - accounting
+      - inventory
+      - shopify
+      - perfume-business
+      - egypt
+    ticket_prefix: GH
+
+defaults:
+  status: active
+  tier: P1
+  ticket_prefix: GH
+  roles:
+    - tech-lead
