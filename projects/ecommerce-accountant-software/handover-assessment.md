@@ -31,10 +31,13 @@
 
 ### Build status
 
-- `npm install`: **not attempted in this assessment**
-- `npm run build`: **not attempted** — verify locally before first feature PR
-- `npm run test`: **not attempted** — 215 test files present; CI workflow is healthy in the most recent merge
-- `npm run lint`: **not attempted**
+- `npm install`: passed locally on 2026-05-20; Prisma Client generated successfully.
+- `npm run typecheck`: passed locally.
+- `npm run test`: passed locally — 65 test files passed, 150 skipped; 730 tests passed, 1767 skipped, 204 todo.
+- `npm run lint`: passed locally.
+- `npm run build`: passed locally; Next.js production build completed successfully.
+- Note: `npm install` reported 7 vulnerabilities (2 moderate, 5 high). Do not run `npm audit fix` automatically; handle through `/audit-deps`.
+- Note: test output included a non-failing `DATABASE_URL` stderr from `expense-category-mapping.test.ts`; track as cleanup noise, not a failed baseline.
 
 ### Test coverage
 
