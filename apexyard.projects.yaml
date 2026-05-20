@@ -4,6 +4,7 @@ projects:
   - name: ecommerce-accountant-software
     repo: GOkasha/ecommerce-accountant-software
     docs: projects/ecommerce-accountant-software
+    workspace: workspace/ecommerce-accountant-software
     status: handover
     tier: P0
     roles:
@@ -14,6 +15,9 @@ projects:
       - qa-engineer
       - security-auditor
       - data-analyst
+      - platform-engineer
+      - sre
+      - data-engineer
     tags:
       - ecommerce
       - accounting
