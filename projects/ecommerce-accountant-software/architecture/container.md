@@ -14,7 +14,7 @@ C4Container
     System_Boundary(boundary, "Perfume ERP") {
         Container(web_api, "Web App + API", "Next.js 16.2 App Router (TypeScript 5.9, React 19)", "Renders admin UI, hosts 121 API routes, runs auth + business logic; deployed as a single Next.js app")
         ContainerDb(db, "Primary Database", "PostgreSQL via Prisma 6.19", "57 models — products, inventory, orders, journal entries / lines, customers, suppliers, Shopify links, audit log")
-        Container(importer, "Workbook Importer", "tsx scripts (xlsx)", "Ingests legacy Store_backend_system workbook into staging tables with source-row metadata; manual trigger")
+        Container(importer, "Workbook Importer", "tsx scripts (ExcelJS)", "Ingests legacy Store_backend_system workbook into staging tables with source-row metadata; manual trigger. Migrated from xlsx on 2026-05-20 (PRs #160 / #161 / #163 / #164)")
     }
 
     System_Ext(shopify, "Shopify", "Al Bayaa store + Zahwa store — products, inventory, webhook orders, CSV export/import")
