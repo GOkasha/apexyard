@@ -4,6 +4,18 @@
 **Assessor**: GOkasha
 **Status**: handover
 
+## Status update — 2026-05-21
+
+This document is preserved as the original handover snapshot from 2026-05-20. The points below are what has changed since. The body of the assessment is unchanged.
+
+- **Workbook ingest** — the `xlsx` library has been replaced with **ExcelJS** (PRs [#160](https://github.com/GOkasha/ecommerce-accountant-software/pull/160) *add parallel ExcelJS importer*, [#161](https://github.com/GOkasha/ecommerce-accountant-software/pull/161) *cut over*, [#163](https://github.com/GOkasha/ecommerce-accountant-software/pull/163) *remove xlsx dependency*, [#164](https://github.com/GOkasha/ecommerce-accountant-software/pull/164) *collapse importer paths*, merged 2026-05-20 / 2026-05-21). The "Quality risks → Dependencies → `xlsx`" item and the "Technical debt → workbook ingest uses xlsx" item below are **superseded** — no action remains. The container diagram has been updated accordingly.
+- **Registry "Suggested updates"** — `apexyard.projects.yaml` now includes `workspace: workspace/ecommerce-accountant-software` and the additional roles (`platform-engineer`, `sre`, `data-engineer`). The "Suggested updates (apply manually)" block in § Integration Plan is **resolved**.
+- **Open question #1 ("Authority of `CLAUDE.md`")** — resolved by [`agdr/AgDR-0001-apexyard-vs-project-claude-md.md`](agdr/AgDR-0001-apexyard-vs-project-claude-md.md) and [`governance.md`](governance.md). Summary: the app's in-repo rules win for code conventions; ApexYard wins for portfolio governance.
+- **Recent activity** — the most recent merge is now **PR #164** (was #147 at handover). The project has stayed active through the ExcelJS cutover and the dep-audit remediation; baseline lives in [`dep-audit-2026-05-20.md`](dep-audit-2026-05-20.md), open remediation tracker is [`GOkasha/ecommerce-accountant-software#148`](https://github.com/GOkasha/ecommerce-accountant-software/issues/148).
+- **All other risks, integration-plan items, and open questions remain as stated below.**
+
+---
+
 ## Origin
 
 - **Where it came from**: greenfield in-house build (registered project, not an acquisition). The repo replaces a working `Store_backend_system_v4_shopify_sync_customers.xlsx` workbook used by an Egypt-based perfume business.
