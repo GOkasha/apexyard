@@ -66,6 +66,10 @@ if [ -n "$REPO_ROOT" ] && [ -f "$REPO_ROOT/.claude/hooks/_lib-read-config.sh" ];
   . "$REPO_ROOT/.claude/hooks/_lib-read-config.sh"
   TYPES=$(config_get '.branch.type_whitelist[]' | paste -sd'|' -)
 fi
+# Defensive belt-and-braces: even though _lib-read-config.sh strips CR/BOM,
+# scrub TYPES once more here so the hook stays correct in isolation if the
+# library is ever swapped or downgraded. See me2resh/apexyard#7.
+TYPES=$(echo "$TYPES" | tr -d '\r')
 # Fallback if config unavailable (jq missing, standalone install, etc.)
 if [ -z "$TYPES" ]; then
   TYPES="feature|fix|refactor|chore|docs|test|spike|ci|build|perf"

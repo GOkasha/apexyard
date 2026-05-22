@@ -57,6 +57,15 @@ fi
 # Handles `gh pr merge <N>` and `gh api repos/<owner>/<repo>/pulls/<N>/merge`.
 . "$(dirname "$0")/_lib-extract-pr.sh"
 
+# Shared marker reader with BOM/CR normalization (me2resh/apexyard#7).
+# Optional — only sourced when the lib is present. If absent, falls back
+# to the legacy inline reads below (so older deployments without the lib
+# keep working, just without Windows-marker tolerance).
+if [ -f "$(dirname "$0")/_lib-read-marker.sh" ]; then
+  # shellcheck disable=SC1090,SC1091
+  . "$(dirname "$0")/_lib-read-marker.sh"
+fi
+
 if ! is_merge_command "$COMMAND"; then
   exit 0
 fi
@@ -130,7 +139,14 @@ MSG
   exit 2
 fi
 
-REX_SHA=$(tr -d '[:space:]' < "$REX_APPROVAL")
+# Read Rex's bare-SHA marker through the shared normalizer when available
+# (strips BOM + CR + whitespace). Fall back to the inline strip when the
+# lib isn't on disk yet (older deployment).
+if command -v read_marker_sha >/dev/null 2>&1; then
+  REX_SHA=$(read_marker_sha "$REX_APPROVAL")
+else
+  REX_SHA=$(tr -d '[:space:]' < "$REX_APPROVAL")
+fi
 if [ -n "$REX_SHA" ] && [ -n "$CURRENT_SHA" ] && [ "$REX_SHA" != "$CURRENT_SHA" ]; then
   cat >&2 <<MSG
 BLOCKED: Code-reviewer approved commit ${REX_SHA:0:7} but HEAD is now ${CURRENT_SHA:0:7}.
@@ -175,13 +191,19 @@ fi
 # Bare-SHA legacy markers (single line, no `=`) fail the parse and are
 # rejected with a clear "stale format" message pointing at /approve-merge.
 ceo_field() {
-  # Extract value of `<key>=` from the marker, stripping surrounding quotes.
-  # Reads only the first matching line so a malformed marker with duplicates
-  # still produces a deterministic answer.
-  grep -E "^${1}=" "$CEO_APPROVAL" 2>/dev/null \
-    | head -1 \
-    | sed -E "s/^${1}=//" \
-    | sed -E 's/^"(.*)"$/\1/'
+  # Extract value of `<key>=` from the CEO marker. Uses the shared
+  # normalizer (strips BOM + CR before parsing — me2resh/apexyard#7) when
+  # available, falling back to the legacy inline grep+sed otherwise. Reads
+  # only the first matching line so a malformed marker with duplicates
+  # still produces a deterministic answer; strips surrounding quotes.
+  if command -v read_marker_field >/dev/null 2>&1; then
+    read_marker_field "$CEO_APPROVAL" "$1"
+  else
+    grep -E "^${1}=" "$CEO_APPROVAL" 2>/dev/null \
+      | head -1 \
+      | sed -E "s/^${1}=//" \
+      | sed -E 's/^"(.*)"$/\1/'
+  fi
 }
 
 CEO_SHA=$(ceo_field sha)
