@@ -1,7 +1,7 @@
 # License posture — accept MPL-2.0 / LGPL-3.0-or-later transitive packages
 
 > In the context of the 2026-05-20 dependency audit flagging 27 transitive packages under restricted licenses (MPL-2.0 + LGPL-3.0-or-later) in `ecommerce-accountant-software`, facing the absence of any prior documented posture and a backlog ticket [#153] asking for one, I decided to **accept the current transitive-license posture as engineering risk documentation conditional on the project's current hosted-only / no-distribution shape**, in order to close out the audit cycle without ripping out load-bearing build / image / a11y dependencies, accepting that this acceptance is non-eternal and that formal legal review is required before any change to the project's distribution shape.
-
+>
 > **This AgDR is engineering risk documentation, not legal advice.** It is a founder-authored portfolio-side record of the project's current distribution shape and the conditions under which the documented MPL-2.0 / LGPL-3.0-or-later transitive-dependency posture is acceptable. Before any change to that shape — public SaaS launch, source distribution, binary distribution, on-prem installer, Electron / desktop app, or shipping `node_modules` to customers — a formal legal review and a superseding AgDR are required.
 
 ## Context
