@@ -58,13 +58,26 @@ if echo "$COMMAND" | grep -qE 'git[[:space:]]+commit\b[^|;&]*-m\b[^|;&]*\$\(cat[
   exit 0
 fi
 
-# Extract commit message (multi-line safe)
-COMMAND_FLAT=$(echo "$COMMAND" | tr '\n' ' ')
+# Extract commit message (multi-line safe).
+#
+# Multi-`-m` parsing is non-trivial: git accepts `-m subject -m body` and
+# concatenates them as separate paragraphs. We validate ONLY the FIRST `-m`
+# value (the subject line). Using a greedy `sed s/.*-m '...'.*/.../` would
+# match the LAST `-m` (because `.*-m` is greedy), so we use `grep -oE` to
+# enumerate each `-m '<value>'` segment and take the first match. Strip CR
+# at the boundary in case the command crossed a Windows shell. See
+# me2resh/apexyard#7 for the multi-`-m` bug this replaced.
+COMMAND_FLAT=$(echo "$COMMAND" | tr '\n' ' ' | tr -d '\r')
 MSG=""
-MSG=$(echo "$COMMAND_FLAT" | sed -nE "s/.*-m[[:space:]]+'([^']*)'.*/\1/p" | head -1)
+# 1. Try single-quoted form first: -m 'subject' / --message 'subject'.
+MSG=$(echo "$COMMAND_FLAT" | grep -oE "(-m|--message)[[:space:]]+'[^']*'" | head -1 \
+        | sed -E "s/^(-m|--message)[[:space:]]+'(.*)'$/\2/")
+# 2. Try double-quoted form: -m "subject" / --message "subject".
 if [ -z "$MSG" ]; then
-  MSG=$(echo "$COMMAND_FLAT" | sed -nE 's/.*-m[[:space:]]+"([^"]*)".*/\1/p' | head -1)
+  MSG=$(echo "$COMMAND_FLAT" | grep -oE '(-m|--message)[[:space:]]+"[^"]*"' | head -1 \
+          | sed -E 's/^(-m|--message)[[:space:]]+"(.*)"$/\2/')
 fi
+# 3. Fall back to -F / --file <path>.
 if [ -z "$MSG" ]; then
   MSG_FILE=$(echo "$COMMAND_FLAT" | sed -nE 's/.*(-F|--file)[[:space:]]+([^[:space:]]+).*/\2/p' | head -1)
   if [ -n "$MSG_FILE" ] && [ -f "$MSG_FILE" ]; then
@@ -77,8 +90,8 @@ if [ -z "$MSG" ]; then
   exit 0
 fi
 
-# Get the first line of the message (the subject)
-SUBJECT=$(echo "$MSG" | head -1)
+# Get the first line of the message (the subject), CR-stripped.
+SUBJECT=$(echo "$MSG" | head -1 | tr -d '\r')
 
 if [ -z "$SUBJECT" ]; then
   exit 0

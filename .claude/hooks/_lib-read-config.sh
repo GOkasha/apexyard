@@ -66,11 +66,33 @@ _config_load() {
     return 0
   fi
 
+  # Normalize file inputs before handing to jq: strip a leading UTF-8 BOM
+  # from line 1 and remove all CRs. Without this, a Windows-checked-out
+  # config file (CRLF line endings) or a PowerShell-saved overrides file
+  # (BOM-prefixed UTF-8) yields string values in jq's output that carry CR
+  # / BOM bytes — corrupting every downstream regex match. See me2resh
+  # /apexyard#7 for the failure mode.
+  #
+  # Use temp files instead of process substitution: `<(...)` resolves to a
+  # `/proc/PID/fd/N` path which Git Bash on Windows does not expose, so jq
+  # fails to open the FD. Temp files are portable across all shells the
+  # framework supports.
   if [ -f "$overrides" ]; then
     # Shallow merge: user overrides win at top-level keys.
-    jq -s '.[0] * .[1]' "$defaults" "$overrides" 2>/dev/null || cat "$defaults"
+    local tmp_d tmp_o merged
+    tmp_d=$(mktemp 2>/dev/null) || tmp_d="${TMPDIR:-/tmp}/_apexyard_cfg_d.$$"
+    tmp_o=$(mktemp 2>/dev/null) || tmp_o="${TMPDIR:-/tmp}/_apexyard_cfg_o.$$"
+    sed -e '1s/^\xef\xbb\xbf//' "$defaults"  | tr -d '\r' > "$tmp_d"
+    sed -e '1s/^\xef\xbb\xbf//' "$overrides" | tr -d '\r' > "$tmp_o"
+    merged=$(jq -s '.[0] * .[1]' "$tmp_d" "$tmp_o" 2>/dev/null)
+    rm -f "$tmp_d" "$tmp_o"
+    if [ -n "$merged" ]; then
+      echo "$merged"
+    else
+      sed -e '1s/^\xef\xbb\xbf//' "$defaults" | tr -d '\r'
+    fi
   else
-    cat "$defaults"
+    sed -e '1s/^\xef\xbb\xbf//' "$defaults" | tr -d '\r'
   fi
 }
 
@@ -85,7 +107,10 @@ config_get() {
     _CONFIG_CACHE=$(_config_load)
   fi
   if command -v jq >/dev/null 2>&1; then
-    echo "$_CONFIG_CACHE" | jq -r "$filter" 2>/dev/null
+    # Belt-and-braces: even after _config_load normalizes file inputs,
+    # strip any CRs that jq might still emit on platforms where the
+    # runtime treats `\r\n` as a line separator. See me2resh/apexyard#7.
+    echo "$_CONFIG_CACHE" | jq -r "$filter" 2>/dev/null | tr -d '\r'
   else
     return 0
   fi
