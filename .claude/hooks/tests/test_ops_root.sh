@@ -224,8 +224,103 @@ case_8() {
   )
 }
 
+# ---------------------------------------------------------------------------
+# Case 9 (GOkasha/apexyard#9): Windows-style start path must terminate
+# even when no marker is found. Pre-fix, dirname on `C:/Users/Lenovo`
+# eventually hits `r="C:"` and stays there (dirname returns its input),
+# spinning the walk loop forever. After the fix (self-equal dirname
+# guard + max-iteration cap), the call returns empty within bounded time.
+# ---------------------------------------------------------------------------
+case_9() {
+  local case_name="resolve_ops_root: Windows-style C:/ path terminates without marker"
+  local got_rc got_out
+  # Use a definitely-nonexistent Windows-style path so the walk has no
+  # marker to find and must rely solely on the termination conditions.
+  # Wrap in `timeout 5` so a regression that re-introduces the hang
+  # fails the test rather than blocking the suite indefinitely.
+  got_out=$(timeout 5 bash -c '
+    . "'"$LIB"'"
+    resolve_ops_root "C:/this/path/should/never/exist/anywhere/GH9/test"
+  ' 2>/dev/null)
+  got_rc=$?
+  if [ "$got_rc" = "124" ]; then
+    mark_fail "$case_name" "TIMED OUT — walk-up loop did not terminate"
+    return 1
+  fi
+  if [ -n "$got_out" ]; then
+    mark_fail "$case_name" "expected empty (no marker), got '$got_out'"
+    return 1
+  fi
+  mark_pass "$case_name"
+}
+
+# ---------------------------------------------------------------------------
+# Case 10 (GOkasha/apexyard#9): max-iteration cap kicks in on a
+# pathologically deep path that wouldn't otherwise terminate.
+#
+# This builds a 70-segment path string ("/a1/a2/.../a70") and passes it
+# as an explicit start_dir. None of those segments contain a marker, so
+# the walk must rely on either the `"/"` guard (POSIX paths) or the
+# iteration cap (defensive belt). Either way, finite return is required.
+# ---------------------------------------------------------------------------
+case_10() {
+  local case_name="resolve_ops_root: pathologically deep path returns in bounded time"
+  local path="/"
+  local i=1
+  while [ "$i" -le 70 ]; do
+    path="${path}seg${i}/"
+    i=$((i + 1))
+  done
+  local got_rc got_out
+  got_out=$(timeout 5 bash -c '
+    . "'"$LIB"'"
+    resolve_ops_root "'"$path"'"
+  ' 2>/dev/null)
+  got_rc=$?
+  if [ "$got_rc" = "124" ]; then
+    mark_fail "$case_name" "TIMED OUT on 70-segment path — iteration cap missing"
+    return 1
+  fi
+  if [ -n "$got_out" ]; then
+    mark_fail "$case_name" "expected empty (no marker), got '$got_out'"
+    return 1
+  fi
+  mark_pass "$case_name"
+}
+
+# ---------------------------------------------------------------------------
+# Case 11 (GOkasha/apexyard#9): a Windows-style path whose ancestor IS
+# an ops fork must still resolve correctly — the fix must not break the
+# legitimate happy path. We can't construct a real `C:/Apexyard/...` ops
+# fork in $TMPDIR, but we CAN exercise the equivalent by building an
+# ops fork at $TMPDIR via mktemp and feeding the function an explicit
+# start_dir that nests under it.
+# ---------------------------------------------------------------------------
+case_11() {
+  local case_name="resolve_ops_root: deep start_dir under v2 ops fork still resolves"
+  local sb
+  sb=$(mktemp -d)
+  build_v2_sandbox "$sb"
+  local deep="$sb/a/b/c/d/e/f/g/h/i/j"
+  local got_rc got_out
+  got_out=$(timeout 5 bash -c '
+    . "'"$LIB"'"
+    resolve_ops_root "'"$deep"'"
+  ' 2>/dev/null)
+  got_rc=$?
+  if [ "$got_rc" = "124" ]; then
+    mark_fail "$case_name" "TIMED OUT walking ancestors of '$deep'"
+    return 1
+  fi
+  if [ "$got_out" != "$sb" ]; then
+    mark_fail "$case_name" "expected '$sb', got '$got_out'"
+    return 1
+  fi
+  mark_pass "$case_name"
+}
+
 echo "Running ops-root lib tests..."
-for fn in case_1 case_2 case_3 case_4 case_5 case_6 case_7 case_8; do
+for fn in case_1 case_2 case_3 case_4 case_5 case_6 case_7 case_8 case_9 case_10 case_11; do
   run_case "$fn"
 done
 
