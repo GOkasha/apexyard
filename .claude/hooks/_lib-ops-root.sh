@@ -41,7 +41,20 @@ _LIB_OPS_ROOT_SOURCED=1
 resolve_ops_root() {
   local start="${1:-$PWD}"
   local r="$start"
-  while [ -n "$r" ] && [ "$r" != "/" ]; do
+  # Termination guards:
+  #   - r != "/"        — POSIX root reached (the original guard).
+  #   - r != "$prev"    — dirname has hit a fixed point. On Git Bash for
+  #                       Windows, `dirname "C:"` returns `"C:"` (and
+  #                       `dirname "C:/"` returns `"C:"`), so a walk-up
+  #                       from any C:/... path would otherwise spin
+  #                       forever because "C:" != "/". See
+  #                       GOkasha/apexyard#9 for the incident.
+  #   - i < 64          — defensive belt against any future dirname
+  #                       quirk on any platform. The deepest plausible
+  #                       ops-root walk is under 32 segments.
+  local prev=""
+  local i=0
+  while [ -n "$r" ] && [ "$r" != "/" ] && [ "$r" != "$prev" ] && [ "$i" -lt 64 ]; do
     # v2 anchor (preferred): the explicit .apexyard-fork marker file.
     # Presence-only — content is ignored. Cheapest test runs first.
     if [ -f "$r/.apexyard-fork" ]; then
@@ -54,7 +67,9 @@ resolve_ops_root() {
       printf '%s' "$r"
       return 0
     fi
+    prev="$r"
     r=$(dirname "$r")
+    i=$((i + 1))
   done
   return 0
 }
