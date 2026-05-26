@@ -1,6 +1,6 @@
 # Role Triggers — When to Activate Which Role
 
-ApexYard ships **19 role definitions** in `roles/{department}/`. They are not all loaded into every session (context efficiency — 19 files × ~120 lines averages out to ~22k tokens, most of which are idle during any given task). Instead, a role is **activated** when a specific condition is met: you read the role file, adopt its identity, responsibilities, and constraints for the duration of the task, then hand off to the next role in the chain.
+ApexYard ships **20 role definitions** in `roles/{department}/`. They are not all loaded into every session (context efficiency — 20 files × ~120 lines averages out to ~22k tokens, most of which are idle during any given task). Instead, a role is **activated** when a specific condition is met: you read the role file, adopt its identity, responsibilities, and constraints for the duration of the task, then hand off to the next role in the chain.
 
 ## Activation Table
 
@@ -25,6 +25,7 @@ ApexYard ships **19 role definitions** in `roles/{department}/`. They are not al
 | **Head of Data** | `roles/data/head-of-data.md` | Analytics strategy · data governance · reporting architecture · cross-project data modelling |
 | **Data Analyst** | `roles/data/data-analyst.md` | SQL queries · dashboards · A/B-test analysis · metric investigation |
 | **Data Engineer** | `roles/data/data-engineer.md` | ETL pipelines · data modelling · data-quality work · warehouse schema changes |
+| **CFO / Financial Controller** | `roles/finance/cfo-financial-controller.md` | PR / diff touches the ledger posting path, journals, chart-of-accounts, or financial schema · customer credit / prepayment / refund work · accounting-correctness or reporting-trust question · pre-go-live financial readiness · explicit "act as the CFO" |
 
 ## Activation Protocol
 
@@ -82,6 +83,7 @@ This is a **prose convention**, not a mechanically-enforced format. The sibling 
 | PR diff touches `**/auth/**`, `**/crypto/**`, `**/secrets/**`, `.env*` | Security Auditor |
 | PR diff touches `.github/workflows/**`, `golden-paths/pipelines/**` | Platform Engineer |
 | PR diff touches `docs/agdr/**` or adds a new dependency | Tech Lead |
+| PR / diff touches the ledger posting path (`**/posting.service.*`, `**/*journal*`, chart-of-accounts codes) or financial models in `prisma/schema.prisma` | CFO / Financial Controller |
 | Production incident / SLO breach mentioned | SRE |
 | New PRD or spec being drafted | Product Manager |
 | Roadmap question or prioritization call | Head of Product |
@@ -124,6 +126,7 @@ Roles deliver concrete artefacts at each handoff point. These are the contracts 
 | Backend / Frontend Engineer → QA Engineer | Testable build + PR |
 | Security Auditor → Tech Lead | Security findings + required fixes |
 | QA Engineer → Product Manager | AC verification sign-off |
+| CFO / Financial Controller → Tech Lead | CFO Financial Gate Report (P0–P3 findings + PASS / PASS WITH CONDITIONS / FAIL verdict) |
 | Platform Engineer → SRE | Production deployment + runbook |
 
 ## Aspirational → Real

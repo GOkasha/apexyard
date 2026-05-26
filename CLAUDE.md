@@ -42,6 +42,7 @@ Each role has a **persona name** — a short identifier used in conversation, PR
 | Design | Maha (Head), Nour (UI Designer), Iman (UX Designer) | `roles/design/` |
 | Security | Faisal (Head), Hakim (Security Auditor), Hamza (Pen Tester) | `roles/security/` |
 | Data | Khalil (Head), Nadia (Data Analyst), Anwar (Data Engineer) | `roles/data/` |
+| Finance | Yusuf (CFO / Financial Controller) | `roles/finance/` |
 
 ### Activation — roles are first-class participants, not reference docs
 
@@ -188,10 +189,10 @@ ApexYard ships with a `.claude/` directory containing the Claude Code primitives
 | Rules | `.claude/rules/` | 11 modular rule files (AgDR triggers, code standards, git conventions, leak protection, parallel work, plan mode, PR quality, PR workflow, role triggers, ticket vocabulary, workflow gates) |
 | Handbooks | `handbooks/` | Adopter-authored coding standards consumed by Rex during code review. Discovery by path-convention (`architecture/` + `general/` always-load; `language/<lang>/` loads on diff-match). Advisory by default; opt in to blocking via `ENFORCEMENT: blocking` marker. See [`handbooks/README.md`](handbooks/README.md). |
 | Agents | `.claude/agents/` | Specialised sub-agents (Code Reviewer — Rex, Security Reviewer — Hatim, Dependency Auditor — Munir, PR Manager — Tariq, Ticket Manager — Idris) |
-| Skills | `.claude/skills/` | 48 slash commands — see the full list below |
+| Skills | `.claude/skills/` | 49 slash commands — see the full list below |
 | Settings | `.claude/settings.json` | Wires hooks to `PreToolUse`, `PostToolUse`, and `SessionStart` events |
 
-### Available skills (48)
+### Available skills (49)
 
 | Skill | Purpose |
 |-------|---------|
@@ -205,6 +206,7 @@ ApexYard ships with a `.claude/` directory containing the Claude Code primitives
 | `/performance-audit` | Bundle and Core Web Vitals — size, images, lazy loading, code splitting |
 | `/monitoring-audit` | Observability — error tracking, health endpoints, alerting, runbooks |
 | `/docs-audit` | Diataxis documentation — tutorials, how-to guides, reference, explanation |
+| `/cfo-financial-gate` | **Read-only CFO / Financial Controller audit** (persona Yusuf) — accounting correctness, journal integrity, AR/AP, customer credits/deposits/prepayments, refund-liability, COGS/WAC, stock accounting, reporting trust, auditability, go-live readiness. P0–P3 findings + PASS / PASS WITH CONDITIONS / FAIL verdict, persisted for trend tracking. Never edits files, runs migrations, touches `.env`, or mutates the DB. |
 | `/start-ticket` | Declare an active ticket for this session (required before code edits) |
 | `/approve-merge` | Record per-PR CEO approval for a specific merge (required by merge gate) |
 | `/approve-design` | Record per-PR design-review approval for UI PRs (required by design gate) |
@@ -276,7 +278,7 @@ Copy whichever you need into your project's `.github/workflows/`. Full details i
 | Rules (modular, framework-wide) | `.claude/rules/` |
 | **Adopter handbooks** (consumed by Rex during code review) | `handbooks/` — see [`handbooks/README.md`](handbooks/README.md) for the discovery + advisory/blocking conventions |
 | Agents | `.claude/agents/` |
-| Skills (48 slash commands) | `.claude/skills/` |
+| Skills (49 slash commands) | `.claude/skills/` |
 | Hook wiring | `.claude/settings.json` |
 | **Per-project docs** | `projects/<name>/` |
 | **Live working copies** (gitignored) | `workspace/<name>/` |
