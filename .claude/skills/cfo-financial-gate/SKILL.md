@@ -14,6 +14,7 @@ A deliberate financial-correctness checkpoint run by **Yusuf**, the [CFO / Finan
 > ## ⛔ READ-ONLY — non-negotiable
 >
 > This skill **never**:
+>
 > - edits, creates, or deletes any file in the audited repo;
 > - runs migrations (`prisma migrate` / `db push` / `db execute`), seeds, or any DB-mutating command;
 > - reads, prints, parses, greps, or infers `.env*` / `DATABASE_URL` / credentials;
