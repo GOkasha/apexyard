@@ -1,6 +1,6 @@
 # Role Triggers — When to Activate Which Role
 
-ApexYard ships **19 role definitions** in `roles/{department}/`. They are not all loaded into every session (context efficiency — 19 files × ~120 lines averages out to ~22k tokens, most of which are idle during any given task). Instead, a role is **activated** when a specific condition is met: you read the role file, adopt its identity, responsibilities, and constraints for the duration of the task, then hand off to the next role in the chain.
+ApexYard ships **20 role definitions** in `roles/{department}/`. They are not all loaded into every session (context efficiency — 20 files × ~120 lines averages out to ~22k tokens, most of which are idle during any given task). Instead, a role is **activated** when a specific condition is met: you read the role file, adopt its identity, responsibilities, and constraints for the duration of the task, then hand off to the next role in the chain.
 
 ## Activation Table
 
