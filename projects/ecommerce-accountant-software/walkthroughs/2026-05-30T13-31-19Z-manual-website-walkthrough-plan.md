@@ -16,11 +16,12 @@
 
 ---
 
-# A. Page-by-page walkthrough checklist
+## A. Page-by-page walkthrough checklist
 
 > **Sources of truth used to build this list**: `src/components/app-shell.tsx` (the canonical `NAV` array exported for tests), `src/app/**/page.tsx` (44 real route files), `src/lib/ui/module-definitions.ts` (the 14 generic-template `[module]` slugs), and `docs/FINANCIAL_LOGIC_BLUEPRINT.md` (which money/inventory flows post journals).
 >
 > **Legend**:
+>
 > - **Data**: `real` = backed by Prisma queries / ledger reads, `demo` = `module-definitions.ts` hardcoded rows/metrics, `unknown` = mixed or needs eyes-on confirmation.
 > - **Money** / **Inventory** / **AuditLog**: marks whether a successful action on the page WRITES to the ledger, stock_movements, or audit_logs. Read-only views are noted explicitly.
 
@@ -646,7 +647,7 @@ Plus these `module-definitions.ts` slugs that don't appear in the current `NAV` 
 
 ---
 
-# B. Suggested manual-testing order
+## B. Suggested manual-testing order
 
 Follow this order so each test's output feeds the next:
 
@@ -679,7 +680,7 @@ After this 24-step walk, the remaining marketing / cohorts / budget / partners p
 
 ---
 
-# C. Screenshots / logs to capture per finding
+## C. Screenshots / logs to capture per finding
 
 For every bug or odd behaviour, capture **all five** of these so a follow-up ticket isn't blocked by re-reproduction:
 
@@ -702,7 +703,7 @@ For inventory bugs:
 
 ---
 
-# D. Rules for converting findings into GitHub issues
+## D. Rules for converting findings into GitHub issues
 
 **Do not file as you walk.** Take notes during the walkthrough, then triage in one batch at the end. This avoids 30 single-issue PRs and lets you collapse duplicates.
 
@@ -750,7 +751,7 @@ Once you have your batch (typically 5–20 tickets), use **`/tickets-batch`** ra
 
 ---
 
-# E. Stop notice
+## E. Stop notice
 
 This is read-only output only. No files were edited in the app repo, no branches created, no commits, no pushes, no PRs, no GitHub issues filed, no schema / migrations / package / `.env` / workflow files touched, no destructive commands run.
 
