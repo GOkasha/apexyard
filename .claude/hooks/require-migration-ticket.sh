@@ -68,6 +68,20 @@ if [ -z "$FILE_PATH" ]; then
   exit 0
 fi
 
+# Normalize Windows backslash paths so the forward-slash exemption +
+# migration-path matching below work on Git Bash (GOkasha/apexyard#11).
+# The Edit/Write tools hand a native backslash FILE_PATH on Windows; the
+# `*/.claude/*` / `*/migrations/*` globs are forward-slash only, so without
+# this a backslash `prisma\schema.prisma` slips past the migration gate.
+NORM_LIB="$(cd "$(dirname "$0")" && pwd)/_lib-normalize-path.sh"
+if [ -f "$NORM_LIB" ]; then
+  # shellcheck source=/dev/null
+  . "$NORM_LIB"
+fi
+command -v normalize_path >/dev/null 2>&1 \
+  || normalize_path() { printf '%s' "$1" | tr '\\' '/'; }
+FILE_PATH=$(normalize_path "$FILE_PATH")
+
 # --------- Exempt meta / docs / example files ---------
 # These never need a migration ticket regardless of path, so short-circuit
 # before doing any network calls.

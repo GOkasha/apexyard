@@ -34,21 +34,66 @@ INPUT=$(cat)
 TOOL_NAME=$(echo "$INPUT" | jq -r '.tool_name // empty' 2>/dev/null)
 FILE_PATH=$(echo "$INPUT" | jq -r '.tool_input.file_path // .tool_input.path // empty' 2>/dev/null)
 
-# Bash-tool path: extract the target file from the command if it appears
-# to be a write. Closes the bypass surface where Bash file-writes
-# (`echo > file`, `tee file`, `sed -i ... file`, `python -c
-# 'pathlib.Path(...).write_text(...)'`, etc.) routed around the
-# Edit/Write/MultiEdit-only gate. See me2resh/apexyard#151 + the
-# _lib-detect-bash-write helper for the matcher details and design
-# choice (false-negatives preferred over false-positives).
+# --- Shared helpers + Windows path normalization (GOkasha/apexyard#11) ---
+# On Git Bash for Windows the Edit/Write/MultiEdit tools hand us a
+# backslash FILE_PATH; the forward-slash path matching below would miss it
+# (over-blocking exempt/.claude writes, failing to resolve the per-project
+# workspace marker). normalize_path() converts `\` -> `/` at the boundary
+# so every comparison works on both separators. See _lib-normalize-path.sh.
+HOOK_DIR="$(cd "$(dirname "$0")" && pwd)"
+if [ -f "$HOOK_DIR/_lib-normalize-path.sh" ]; then
+  # shellcheck source=/dev/null
+  . "$HOOK_DIR/_lib-normalize-path.sh"
+fi
+# Defensive inline fallback if the lib is missing — never brick the hook.
+command -v normalize_path >/dev/null 2>&1 \
+  || normalize_path() { printf '%s' "$1" | tr '\\' '/'; }
+
+# REPO_ROOT is already forward-slash on Git Bash (git rev-parse output);
+# normalize defensively so the prefix comparisons are separator-safe.
+REPO_ROOT=$(git rev-parse --show-toplevel 2>/dev/null)
+REPO_ROOT=$(normalize_path "$REPO_ROOT")
+
+# path_is_exempt <normalized-path>
+#   Returns 0 if the path is an exempt meta / framework / docs target that
+#   never requires an active ticket: anything under .claude/ or docs/, any
+#   *.md, and the four root dotfiles. Matched in BOTH repo-relative form
+#   (after stripping REPO_ROOT) and absolute `*/...` form — the absolute
+#   arm covers paths outside REPO_ROOT (e.g. agent worktrees). This is the
+#   single source of truth for the exemption: used for Edit/Write/MultiEdit
+#   AND for each target of a multi-target Bash write.
+path_is_exempt() {
+  local fp="$1" rel="$1"
+  case "$fp" in
+    "$REPO_ROOT"/*) rel="${fp#$REPO_ROOT/}" ;;
+  esac
+  case "$rel" in
+    .claude/*|.claude|*/.claude/*|*/.claude) return 0 ;;
+    docs/*|docs|*/docs/*|*/docs) return 0 ;;
+    TODO.md|README.md|MEMORY.md|CLAUDE.md) return 0 ;;
+  esac
+  case "$rel" in
+    *.md) return 0 ;;
+  esac
+  return 1
+}
+# Note: `projects/*/docs/*` is subsumed by `*/docs/*` above (shell case `*`
+# crosses `/`), so no separate arm is needed.
+
 if [ "$TOOL_NAME" = "Bash" ]; then
+  # Bash-tool path: extract the target file(s) from the command if it
+  # appears to be a write. Closes the bypass surface where Bash file-writes
+  # (`echo > file`, `tee file`, `sed -i ... file`, `python -c
+  # 'pathlib.Path(...).write_text(...)'`, etc.) routed around the
+  # Edit/Write/MultiEdit-only gate. See me2resh/apexyard#151 + the
+  # _lib-detect-bash-write helper for the matcher details and design
+  # choice (false-negatives preferred over false-positives).
   COMMAND=$(echo "$INPUT" | jq -r '.tool_input.command // empty' 2>/dev/null)
   if [ -z "$COMMAND" ]; then
     exit 0
   fi
 
   # Source the bash-write detector. Library lives next to this hook.
-  HOOK_DIR="$(cd "$(dirname "$0")" && pwd)"
   if [ ! -f "$HOOK_DIR/_lib-detect-bash-write.sh" ]; then
     # Library missing — fall back to non-Bash behavior to avoid bricking
     # the hook entirely.
@@ -62,52 +107,45 @@ if [ "$TOOL_NAME" = "Bash" ]; then
     exit 0
   fi
 
-  # Try to extract a target path so we can apply the same path-based
-  # exemptions (.claude/, docs/, *.md). If extraction fails, FILE_PATH
-  # stays empty and the gate is applied categorically.
-  FILE_PATH=$(bash_extract_write_target "$COMMAND")
-fi
-
-if [ -z "$FILE_PATH" ] && [ "$TOOL_NAME" != "Bash" ]; then
-  exit 0
-fi
-
-# Normalise to repo-relative path when possible
-REPO_ROOT=$(git rev-parse --show-toplevel 2>/dev/null)
-REL_PATH="$FILE_PATH"
-if [ -n "$REPO_ROOT" ] && [ -n "$FILE_PATH" ]; then
-  case "$FILE_PATH" in
-    "$REPO_ROOT"/*) REL_PATH="${FILE_PATH#$REPO_ROOT/}" ;;
-  esac
-fi
-
-# Exempt paths.
-#
-# Each path-prefix exemption is matched in both REL_PATH (repo-relative)
-# and absolute (*/path/*) forms. Absolute-path fallthrough happens when
-# FILE_PATH points outside REPO_ROOT (e.g. agent worktrees whose
-# git-toplevel differs from the outer apexyard tree); in that case the
-# strip on lines 43-45 is a no-op and REL_PATH stays absolute. The
-# existing `*.md` pattern already crosses `/`, so absolute-match via a
-# `*/…` prefix is a known-good shape — #56 extends the same trick to the
-# path-prefix exemptions.
-#
-# Skipped entirely when FILE_PATH is empty (Bash command writes to an
-# unextractable target — e.g. `python -c '...write...'`). Those fall
-# through to the ticket gate; the bootstrap-skill exemption below covers
-# the legitimate use case (/setup writing to fork-root files via Bash).
-if [ -n "$REL_PATH" ]; then
-  case "$REL_PATH" in
-    .claude/*|.claude|*/.claude/*|*/.claude) exit 0 ;;
-    docs/*|docs|*/docs/*|*/docs) exit 0 ;;
-    TODO.md|README.md|MEMORY.md|CLAUDE.md) exit 0 ;;
-  esac
-  # Note: `projects/*/docs/*` is subsumed by `*/docs/*` above (shell case `*`
-  # crosses `/`), so no separate arm needed. Per-project apexyard docs are
-  # matched by the generic docs-in-any-subtree pattern.
-  case "$REL_PATH" in
-    *.md) exit 0 ;;
-  esac
+  # Multi-target aware (GOkasha/apexyard#11): gather EVERY write target so
+  # we can apply the path exemption per-target. `rm .claude/session/<m>`
+  # passes (all targets exempt); `rm .claude/x src/y` blocks (a non-exempt
+  # target rides along); an unparseable write falls through to the gate.
+  TARGETS=$(bash_extract_write_targets "$COMMAND")
+  if [ -n "$TARGETS" ]; then
+    any_target=0
+    all_exempt=1
+    first_nonexempt=""
+    while IFS= read -r t; do
+      [ -z "$t" ] && continue
+      any_target=1
+      t=$(normalize_path "$t")
+      if ! path_is_exempt "$t"; then
+        all_exempt=0
+        [ -z "$first_nonexempt" ] && first_nonexempt="$t"
+      fi
+    done < <(printf '%s\n' "$TARGETS")
+    if [ "$any_target" = 1 ] && [ "$all_exempt" = 1 ]; then
+      # Every write target is exempt — allow without a ticket.
+      exit 0
+    fi
+    # At least one non-exempt target — gate it. The downstream marker
+    # resolution operates on the first non-exempt target.
+    FILE_PATH="$first_nonexempt"
+  else
+    # No extractable target (e.g. `python -c '...write...'`) — leave
+    # FILE_PATH empty and apply the gate categorically (unchanged from #151).
+    FILE_PATH=""
+  fi
+else
+  # Edit / Write / MultiEdit — the tool input carries the path explicitly.
+  if [ -z "$FILE_PATH" ]; then
+    exit 0
+  fi
+  FILE_PATH=$(normalize_path "$FILE_PATH")
+  if path_is_exempt "$FILE_PATH"; then
+    exit 0
+  fi
 fi
 
 # Discover the ops root. Walk up from REPO_ROOT looking for either the
