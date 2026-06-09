@@ -416,3 +416,76 @@ bash_extract_write_target() {
   # No target extractable.
   return 0
 }
+
+# ------------------------------------------------------------------------------
+# Public: bash_extract_write_targets COMMAND
+#
+# Multi-target extraction. Echoes EVERY extractable write target, one per
+# line (empty output when none extractable). Added for GOkasha/apexyard#11
+# so the active-ticket gate can apply the path exemption per-target for
+# `rm` cleanup of `.claude/session/*` markers:
+#
+#   - allow only when ALL targets are exempt
+#   - block when a command mixes exempt + non-exempt targets (so `.claude/`
+#     can't act as a smokescreen for a non-exempt path)
+#   - block when targets are unparseable (caller falls back to the gate)
+#
+# `rm` (the #11 case) is multi-target by nature, so it gets a dedicated arm
+# here that emits every non-flag positional. Every OTHER write family is
+# single-target — those delegate to `bash_extract_write_target` so the two
+# functions can't drift. `git rm` is excluded (subcommand, not coreutils).
+#
+# Note: the singular `bash_extract_write_target` is deliberately left
+# unchanged (no `rm` arm) so existing callers — e.g. require-migration-
+# ticket.sh — keep their current single-target behaviour. Only the
+# active-ticket gate opts into multi-target awareness via this function.
+# ------------------------------------------------------------------------------
+bash_extract_write_targets() {
+  local cmd="$1"
+  [ -z "$cmd" ] && return 0
+
+  # rm arm: emit every non-flag operand. Handles `rm a`, `rm -rf a b`,
+  # `rm -- a`. Only fires when the FIRST command segment is itself a bare
+  # `rm` invocation (optionally wrapped in a leading `(`). `git rm` is a
+  # subcommand, excluded. An `rm` in a LATER segment (`foo; rm x`) is left
+  # unextractable on purpose — the caller then applies the gate, which is
+  # the safe direction (block, never wrongly allow). dd / install are not
+  # special-cased; they fall through to the singular extractor (empty), so
+  # the caller gates them too.
+  local rm_seg
+  rm_seg=$(printf '%s' "$cmd" | sed -E 's/[[:space:]]*[|;&].*$//')
+  if printf '%s' "$rm_seg" | grep -qE '^[[:space:]]*\(?[[:space:]]*rm[[:space:]]' \
+     && ! printf '%s' "$rm_seg" | grep -qE '^[[:space:]]*\(?[[:space:]]*git[[:space:]]+rm([[:space:]]|$)'; then
+    # Drop the leading `rm` (and optional `(`) so only operands remain.
+    # No `\b` (BSD sed portability) — the anchored prefix is enough.
+    rm_seg=$(printf '%s' "$rm_seg" | sed -E 's/^[[:space:]]*\(?[[:space:]]*rm[[:space:]]+//')
+    # Emit each non-flag operand. Disable pathname expansion inside the
+    # subshell so a glob in an operand isn't expanded against the
+    # filesystem (we want the literal operand, not its matches).
+    (
+      set -f
+      local tok
+      for tok in $rm_seg; do
+        case "$tok" in
+          --) continue ;;   # end-of-options separator
+          -*) continue ;;   # a flag
+          *)
+            # Strip matching surrounding quotes.
+            tok="${tok%\"}"; tok="${tok#\"}"
+            tok="${tok%\'}"; tok="${tok#\'}"
+            printf '%s\n' "$tok"
+            ;;
+        esac
+      done
+    )
+    return 0
+  fi
+
+  # All other write families are single-target — reuse the singular
+  # extractor so the redirection / tee / sed / cp / mv / curl / wget logic
+  # lives in exactly one place.
+  local single
+  single=$(bash_extract_write_target "$cmd")
+  [ -n "$single" ] && printf '%s\n' "$single"
+  return 0
+}
